@@ -1,4 +1,4 @@
-#include "../shared/LMDBAdapter.hpp"
+#include "shared/LMDBAdapter.hpp"
 #include "TPCCWorkload.hpp"
 #include "Units.hpp"
 // -------------------------------------------------------------------------------------

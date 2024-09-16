@@ -9,7 +9,7 @@
 #include <unistd.h>
 
 #include <array>
-#include <atomic>
+#include <fstream>
 #include <cmath>
 #include <sstream>
 #include <thread>

@@ -4,8 +4,8 @@
  *
  */
 
-#include "../shared/LeanStoreAdapter.hpp"
-#include "../shared/Types.hpp"
+#include "shared/LeanStoreAdapter.hpp"
+#include "shared/Types.hpp"
 #include "leanstore/concurrency-recovery/CRMG.hpp"
 #include "leanstore/profiling/counters/CPUCounters.hpp"
 #include "leanstore/profiling/counters/WorkerCounters.hpp"

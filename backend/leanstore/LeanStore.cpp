@@ -1,14 +1,11 @@
 #include "LeanStore.hpp"
 
 #include "leanstore/profiling/counters/CPUCounters.hpp"
-#include "leanstore/profiling/counters/PPCounters.hpp"
-#include "leanstore/profiling/counters/WorkerCounters.hpp"
 #include "leanstore/profiling/tables/BMTable.hpp"
 #include "leanstore/profiling/tables/CPUTable.hpp"
 #include "leanstore/profiling/tables/CRTable.hpp"
 #include "leanstore/profiling/tables/DTTable.hpp"
 #include "leanstore/profiling/tables/LatencyTable.hpp"
-#include "leanstore/utils/FVector.hpp"
 #include "leanstore/utils/ThreadLocalAggregator.hpp"
 // -------------------------------------------------------------------------------------
 #include "gflags/gflags.h"
@@ -19,6 +16,7 @@
 #include "tabulate/table.hpp"
 // -------------------------------------------------------------------------------------
 #include <linux/fs.h>
+#include <fcntl.h>
 #include <stdio.h>
 #include <sys/ioctl.h>
 #include <sys/resource.h>
@@ -242,7 +240,7 @@ storage::btree::BTreeLL& LeanStore::registerBTreeLL(string name, storage::btree:
 {
    assert(btrees_ll.find(name) == btrees_ll.end());
    auto& btree = btrees_ll[name];
-   DTID dtid = DTRegistry::global_dt_registry.registerDatastructureInstance(0, reinterpret_cast<void*>(&btree), name);
+   DataStructureId dtid = DTRegistry::global_dt_registry.registerDatastructureInstance(0, reinterpret_cast<void*>(&btree), name);
    btree.create(dtid, config);
    return btree;
 }
@@ -252,7 +250,7 @@ storage::btree::BTreeVI& LeanStore::registerBTreeVI(string name, storage::btree:
 {
    assert(btrees_vi.find(name) == btrees_vi.end());
    auto& btree = btrees_vi[name];
-   DTID dtid = DTRegistry::global_dt_registry.registerDatastructureInstance(2, reinterpret_cast<void*>(&btree), name);
+   DataStructureId dtid = DTRegistry::global_dt_registry.registerDatastructureInstance(2, reinterpret_cast<void*>(&btree), name);
    auto& graveyard_btree = registerBTreeLL("_" + name + "_graveyard", {.enable_wal = false, .use_bulk_insert = false});
    btree.create(dtid, config, &graveyard_btree);
    return btree;
@@ -303,7 +301,7 @@ void LeanStore::serializeState()
          continue;
       }
       rs::Value dt_json_object(rs::kObjectType);
-      const DTID dt_id = dt.first;
+      const DataStructureId dt_id = dt.first;
       rs::Value name;
       name.SetString(std::get<2>(dt.second).c_str(), std::get<2>(dt.second).length(), allocator);
       dt_json_object.AddMember("name", name, allocator);
@@ -377,7 +375,7 @@ void LeanStore::deserializeState()
    assert(dts.IsArray());
    for (auto& dt : dts.GetArray()) {
       assert(dt.IsObject());
-      const DTID dt_id = dt["id"].GetInt();
+      const DataStructureId dt_id = dt["id"].GetInt();
       const DTType dt_type = dt["type"].GetInt();
       const std::string dt_name = dt["name"].GetString();
       std::unordered_map<std::string, std::string> serialized_dt_map;

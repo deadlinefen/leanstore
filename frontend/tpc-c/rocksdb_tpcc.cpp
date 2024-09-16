@@ -1,4 +1,4 @@
-#include "../shared/RocksDBAdapter.hpp"
+#include "shared/RocksDBAdapter.hpp"
 #include "TPCCWorkload.hpp"
 #include "Units.hpp"
 // -------------------------------------------------------------------------------------

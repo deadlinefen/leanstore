@@ -8,7 +8,7 @@ namespace storage
 {
 // -------------------------------------------------------------------------------------
 std::mutex Tracing::mutex;
-std::unordered_map<PID, std::tuple<DTID, u64>> Tracing::ht;
+std::unordered_map<PageId, std::tuple<DataStructureId, u64>> Tracing::ht;
 // -------------------------------------------------------------------------------------
 }  // namespace storage
 }  // namespace leanstore

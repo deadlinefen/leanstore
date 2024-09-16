@@ -12,12 +12,29 @@ enable_language(ASM)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/")
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread -rdynamic -fno-omit-frame-pointer -g3 -static-libstdc++")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread -fno-omit-frame-pointer -g3")
+
+if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -static-libstdc++")
+endif()
+
+if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+  add_compile_options(-Wno-vla-cxx-extension)
+endif()
+
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -rdynamic")
+find_program(LLD_FOUND lld)
+if(LLD_FOUND)
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fuse-ld=lld")
+    set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -fuse-ld=lld")
+    set(CMAKE_MODULE_LINKER_FLAGS "${CMAKE_MODULE_LINKER_FLAGS} -fuse-ld=lld")
+endif()
+message(STATUS "CMAKE_MODULE_LINKER_FLAGS:${CMAKE_MODULE_LINKER_FLAGS}")
 
 if (CMAKE_SYSTEM_PROCESSOR MATCHES "(x86)|(X86)|(amd64)|(AMD64)")
-  add_compile_options(-Wall -Wextra -mavx2 -mcx16 -m64) # -fno-elide-constructors no need for now
+  add_compile_options(-Wextra -mavx2 -mcx16 -m64) # -fno-elide-constructors no need for now
 else()
-  add_compile_options(-Wall -Wextra -march=native)
+  add_compile_options(-Wextra -march=native)
 endif()
 
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DDEBUG")
@@ -47,9 +64,9 @@ find_package(Threads REQUIRED)
 
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 
-include("${CMAKE_SOURCE_DIR}/libs/gflags.cmake")
-include("${CMAKE_SOURCE_DIR}/libs/tabluate.cmake")
-include("${CMAKE_SOURCE_DIR}/libs/rapidjson.cmake")
+# include("${CMAKE_SOURCE_DIR}/libs/gflags.cmake")
+# include("${CMAKE_SOURCE_DIR}/libs/tabluate.cmake")
+# include("${CMAKE_SOURCE_DIR}/libs/rapidjson.cmake")
 #include("${CMAKE_SOURCE_DIR}/libs/boost.cmake")
 #include("${CMAKE_SOURCE_DIR}/libs/rocksdb.cmake")
 #include("${CMAKE_SOURCE_DIR}/libs/googletest.cmake")
@@ -68,6 +85,10 @@ include("${CMAKE_SOURCE_DIR}/libs/rapidjson.cmake")
 # ---------------------------------------------------------------------------
 
 include("${CMAKE_SOURCE_DIR}/shared-headers/local.cmake")
+
+set(THIRDPARTY_INSTALL "thirdparty/installed")
+include_directories(${THIRDPARTY_INSTALL}/include)
+link_directories(${THIRDPARTY_INSTALL}/lib)
 
 # ---------------------------------------------------------------------------
 # Sources

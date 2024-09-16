@@ -258,9 +258,9 @@ struct PerfEvent {
     extendedNames.push_back("GHz");
     return extendedNames;
   }
-  std::unordered_map<string, double> getCountersMap()
+  std::unordered_map<std::string, double> getCountersMap()
   {
-    std::unordered_map<string, double> res;
+    std::unordered_map<std::string, double> res;
     // print all metrics
     for (unsigned i = 0; i < events.size(); i++) {
       res[names[i]] = events[i].readCounter();

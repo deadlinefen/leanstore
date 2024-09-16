@@ -3,7 +3,7 @@
  * @brief defines Schema of each relation.
  *
  */
-#include "../shared/Types.hpp"
+#include "shared/Types.hpp"
 
 struct scaled_t {
    // Entries: 1 to 1 160 000 * scale

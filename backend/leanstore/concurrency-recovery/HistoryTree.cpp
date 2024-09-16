@@ -19,10 +19,10 @@ namespace cr
 {
 using namespace leanstore::storage::btree;
 // -------------------------------------------------------------------------------------
-void HistoryTree::insertVersion(WORKERID session_id,
+void HistoryTree::insertVersion(WorkerId session_id,
                                 TXID tx_id,
                                 COMMANDID command_id,
-                                DTID dt_id,
+                                DataStructureId dt_id,
                                 bool is_remove,
                                 u64 payload_length,
                                 std::function<void(u8*)> cb,
@@ -112,7 +112,7 @@ void HistoryTree::insertVersion(WORKERID session_id,
    }
 }
 // -------------------------------------------------------------------------------------
-bool HistoryTree::retrieveVersion(WORKERID worker_id, TXID tx_id, COMMANDID command_id, const bool is_remove, std::function<void(const u8*, u64)> cb)
+bool HistoryTree::retrieveVersion(WorkerId worker_id, TXID tx_id, COMMANDID command_id, const bool is_remove, std::function<void(const u8*, u64)> cb)
 {
    BTreeLL* volatile btree = (is_remove) ? remove_btrees[worker_id] : update_btrees[worker_id];
    // -------------------------------------------------------------------------------------
@@ -144,7 +144,7 @@ bool HistoryTree::retrieveVersion(WORKERID worker_id, TXID tx_id, COMMANDID comm
    return false;
 }
 // -------------------------------------------------------------------------------------
-void HistoryTree::purgeVersions(WORKERID worker_id,
+void HistoryTree::purgeVersions(WorkerId worker_id,
                                 TXID from_tx_id,
                                 TXID to_tx_id,
                                 RemoveVersionCallback cb,
@@ -183,7 +183,7 @@ void HistoryTree::purgeVersions(WORKERID worker_id,
             utils::unfold(iterator.key().data(), current_tx_id);
             if (current_tx_id >= from_tx_id && current_tx_id <= to_tx_id) {
                auto& version_container = *reinterpret_cast<VersionMeta*>(iterator.mutableValue().data());
-               const DTID dt_id = version_container.dt_id;
+               const DataStructureId dt_id = version_container.dt_id;
                const bool called_before = version_container.called_before;
                version_container.called_before = true;
                key_length = iterator.key().length();
@@ -219,7 +219,7 @@ void HistoryTree::purgeVersions(WORKERID worker_id,
       {
          if (session->leftmost_init) {
             BufferFrame* bf = session->leftmost_bf;
-            Guard bf_guard(bf->header.latch, session->leftmost_version);
+            HybridLatchGuard bf_guard(bf->header.latch, session->leftmost_version);
             bf_guard.recheck();
             HybridPageGuard<BTreeNode> leaf(std::move(bf_guard), bf);
             // -------------------------------------------------------------------------------------
@@ -298,10 +298,10 @@ void HistoryTree::purgeVersions(WORKERID worker_id,
 }
 // -------------------------------------------------------------------------------------
 // Pre: TXID is unsigned integer
-void HistoryTree::visitRemoveVersions(WORKERID worker_id,
+void HistoryTree::visitRemoveVersions(WorkerId worker_id,
                                       TXID from_tx_id,
                                       TXID to_tx_id,
-                                      std::function<void(const TXID, const DTID, const u8*, u64, const bool visited_before)> cb)
+                                      std::function<void(const TXID, const DataStructureId, const u8*, u64, const bool visited_before)> cb)
 {
    // [from, to]
    BTreeLL* btree = remove_btrees[worker_id];
@@ -324,7 +324,7 @@ void HistoryTree::visitRemoveVersions(WORKERID worker_id,
          utils::unfold(iterator.key().data(), current_tx_id);
          if (current_tx_id >= from_tx_id && current_tx_id <= to_tx_id) {
             auto& version_container = *reinterpret_cast<VersionMeta*>(iterator.mutableValue().data());
-            const DTID dt_id = version_container.dt_id;
+            const DataStructureId dt_id = version_container.dt_id;
             const bool called_before = version_container.called_before;
             ensure(called_before == false);
             version_container.called_before = true;

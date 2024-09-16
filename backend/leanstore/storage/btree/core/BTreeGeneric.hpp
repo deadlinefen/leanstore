@@ -32,12 +32,12 @@ struct WALEntry {
    WAL_LOG_TYPE type;
 };
 struct WALInitPage : WALEntry {
-   DTID dt_id;
+   DataStructureId dt_id;
 };
 struct WALLogicalSplit : WALEntry {
-   PID parent_pid = -1;
-   PID left_pid = -1;
-   PID right_pid = -1;
+   PageId parent_pid = -1;
+   PageId left_pid = -1;
+   PageId right_pid = -1;
    s32 right_pos = -1;
 };
 // -------------------------------------------------------------------------------------
@@ -49,7 +49,7 @@ class BTreeGeneric
    // -------------------------------------------------------------------------------------
    Swip<BufferFrame> meta_node_bf;  // kept in memory
    atomic<u64> height = 1;
-   DTID dt_id;
+   DataStructureId dt_id;
    struct Config {
       bool enable_wal = true;
       bool use_bulk_insert = false;
@@ -58,7 +58,7 @@ class BTreeGeneric
    // -------------------------------------------------------------------------------------
    BTreeGeneric() = default;
    // -------------------------------------------------------------------------------------
-   void create(DTID dtid, Config config);
+   void create(DataStructureId dtid, Config config);
    // -------------------------------------------------------------------------------------
    bool tryMerge(BufferFrame& to_split, bool swizzle_sibling = true);
    // -------------------------------------------------------------------------------------
@@ -137,15 +137,15 @@ class BTreeGeneric
       if (FLAGS_optimistic_parent_pointer) {
          jumpmuTry()
          {
-            Guard c_guard(to_find.header.latch);
+            HybridLatchGuard c_guard(to_find.header.latch);
             c_guard.toOptimisticOrJump();
             BufferFrame::Header::OptimisticParentPointer optimistic_parent_pointer = to_find.header.optimistic_parent_pointer;
-            BufferFrame* parent_bf = optimistic_parent_pointer.parent_bf;
+            BufferFrame* parent_bf = optimistic_parent_pointer.parent_buffer_frame;
             c_guard.recheck();
             if (parent_bf != nullptr) {
-               Guard p_guard(parent_bf->header.latch);
+               HybridLatchGuard p_guard(parent_bf->header.latch);
                p_guard.toOptimisticOrJump();
-               if (parent_bf->page.PLSN == optimistic_parent_pointer.parent_plsn && parent_bf->header.pid == optimistic_parent_pointer.parent_pid) {
+               if (parent_bf->page.PLSN == optimistic_parent_pointer.parent_plsn && parent_bf->header.page_id == optimistic_parent_pointer.parent_page_id) {
                   if (*(optimistic_parent_pointer.swip_ptr) == &to_find) {
                      p_guard.recheck();
                      c_guard.recheck();
@@ -162,7 +162,7 @@ class BTreeGeneric
          jumpmuCatch() {}
       }
       // -------------------------------------------------------------------------------------
-      auto& c_node = *reinterpret_cast<BTreeNode*>(to_find.page.dt);
+      auto& c_node = *reinterpret_cast<BTreeNode*>(to_find.page.data);
       // LATCH_FALLBACK_MODE latch_mode = (jumpIfEvicted) ? LATCH_FALLBACK_MODE::JUMP : LATCH_FALLBACK_MODE::EXCLUSIVE;
       LATCH_FALLBACK_MODE latch_mode = LATCH_FALLBACK_MODE::JUMP;  // : LATCH_FALLBACK_MODE::EXCLUSIVE;
       // -------------------------------------------------------------------------------------
@@ -170,7 +170,7 @@ class BTreeGeneric
       u16 level = 0;
       // -------------------------------------------------------------------------------------
       Swip<BTreeNode>* c_swip = &p_guard->upper;
-      if (btree.dt_id != to_find.page.dt_id || p_guard->upper.isEVICTED()) {
+      if (btree.dt_id != to_find.page.data_structure_id || p_guard->upper.isEVICTED()) {
          // Wrong Tree or Root is evicted
          jumpmu::jump();
       }
@@ -230,10 +230,10 @@ class BTreeGeneric
       if (FLAGS_optimistic_parent_pointer) {
          jumpmuTry()
          {
-            Guard c_guard(to_find.header.latch);
+            HybridLatchGuard c_guard(to_find.header.latch);
             c_guard.toOptimisticOrJump();
             c_guard.tryToExclusive();
-            to_find.header.optimistic_parent_pointer.update(parent_handler.parent_bf, parent_handler.parent_bf->header.pid,
+            to_find.header.optimistic_parent_pointer.update(parent_handler.parent_bf, parent_handler.parent_bf->header.page_id,
                                                             parent_handler.parent_bf->page.PLSN,
                                                             reinterpret_cast<BufferFrame**>(&parent_handler.swip), parent_handler.pos);
             c_guard.unlock();

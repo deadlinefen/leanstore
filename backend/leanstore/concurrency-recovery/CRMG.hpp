@@ -24,7 +24,7 @@ namespace cr
 class CRManager
 {
   public:
-   static constexpr u64 MAX_WORKER_THREADS = std::numeric_limits<WORKERID>::max();
+   static constexpr u64 MAX_WORKER_THREADS = std::numeric_limits<WorkerId>::max();
    static CRManager* global;
    Worker* workers[MAX_WORKER_THREADS];
    // -------------------------------------------------------------------------------------

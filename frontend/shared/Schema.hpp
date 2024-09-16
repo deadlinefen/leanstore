@@ -1,5 +1,5 @@
 #pragma once
-#include "../shared/Types.hpp"
+#include "shared/Types.hpp"
 // -------------------------------------------------------------------------------------
 // -------------------------------------------------------------------------------------
 template <typename TableKey, typename TablePayload>
@@ -41,7 +41,7 @@ struct BytesPayload {
       std::memcpy(value, other.value, sizeof(value));
       return *this;
    }
-   friend ostream& operator<<(ostream& os, const BytesPayload& payload) {
+   friend std::ostream& operator<<(std::ostream& os, const BytesPayload& payload) {
       os << std::string_view(reinterpret_cast<const char*>(payload.value), size);
       return os;
    }

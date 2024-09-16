@@ -15,7 +15,7 @@ struct WALEntry {
    enum class TYPE : u8 { TX_START, TX_COMMIT, TX_ABORT, DT_SPECIFIC, CARRIAGE_RETURN };
    // -------------------------------------------------------------------------------------
    u64 magic_debugging_number = 99;
-   std::atomic<LID> lsn;
+   std::atomic<LogId> lsn;
    u16 size;
    TYPE type;
    void computeCRC() { magic_debugging_number = utils::CRC(reinterpret_cast<u8*>(this) + sizeof(u64), size - sizeof(u64)); }
@@ -33,9 +33,9 @@ struct WALMetaEntry : WALEntry {
 // static_assert(sizeof(WALMetaEntry) == 32, "");
 // -------------------------------------------------------------------------------------
 struct WALDTEntry : WALEntry {
-   LID gsn;
-   DTID dt_id;
-   PID pid;
+   LogId gsn;
+   DataStructureId dt_id;
+   PageId pid;
    u8 payload[];
 };
 // -------------------------------------------------------------------------------------

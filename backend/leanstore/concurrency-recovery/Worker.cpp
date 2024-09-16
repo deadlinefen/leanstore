@@ -70,7 +70,7 @@ void Worker::startTX(TX_MODE next_tx_type, TX_ISOLATION_LEVEL next_tx_isolation_
       }
       assert(prev_tx.state != Transaction::STATE::STARTED);
       // -------------------------------------------------------------------------------------
-      const LID sync_point = Worker::Logging::global_sync_to_this_gsn.load();
+      const LogId sync_point = Worker::Logging::global_sync_to_this_gsn.load();
       if (sync_point > logging.getCurrentGSN()) {
          logging.setCurrentGSN(sync_point);
          logging.publishMaxGSNOffset();
@@ -190,7 +190,7 @@ void Worker::abortTX()
       leanstore::storage::DTRegistry::global_dt_registry.undo(dt_entry.dt_id, dt_entry.payload, tx_id);
    });
    // -------------------------------------------------------------------------------------
-   cc.history_tree.purgeVersions(worker_id, active_tx.startTS(), active_tx.startTS(), [&](const TXID, const DTID, const u8*, u64, const bool) {});
+   cc.history_tree.purgeVersions(worker_id, active_tx.startTS(), active_tx.startTS(), [&](const TXID, const DataStructureId, const u8*, u64, const bool) {});
    // -------------------------------------------------------------------------------------
    WALMetaEntry& entry = logging.reserveWALMetaEntry();
    entry.type = WALEntry::TYPE::TX_ABORT;

@@ -55,8 +55,8 @@ void CRManager::groupCommiter()
       io_slot++;
    };
    // -------------------------------------------------------------------------------------
-   LID min_all_workers_gsn;  // For Remote Flush Avoidance
-   LID max_all_workers_gsn;  // Sync all workers to this point
+   LogId min_all_workers_gsn;  // For Remote Flush Avoidance
+   LogId max_all_workers_gsn;  // Sync all workers to this point
    TXID min_all_workers_hardened_commit_ts;
    std::vector<u64> ready_to_commit_rfa_cut;  // Exclusive ) ==
    std::vector<Worker::Logging::WorkerToLW> wt_to_lw_copy;
@@ -69,7 +69,7 @@ void CRManager::groupCommiter()
       CRCounters::myCounters().gct_rounds++;
       COUNTERS_BLOCK() { phase_1_begin = std::chrono::high_resolution_clock::now(); }
       // -------------------------------------------------------------------------------------
-      min_all_workers_gsn = std::numeric_limits<LID>::max();
+      min_all_workers_gsn = std::numeric_limits<LogId>::max();
       max_all_workers_gsn = 0;
       min_all_workers_hardened_commit_ts = std::numeric_limits<TXID>::max();
       // -------------------------------------------------------------------------------------
@@ -83,8 +83,8 @@ void CRManager::groupCommiter()
             }
             wt_to_lw_copy[w_i] = worker.logging.wt_to_lw.getSync();
             // -------------------------------------------------------------------------------------
-            max_all_workers_gsn = std::max<LID>(max_all_workers_gsn, wt_to_lw_copy[w_i].last_gsn);
-            min_all_workers_gsn = std::min<LID>(min_all_workers_gsn, wt_to_lw_copy[w_i].last_gsn);
+            max_all_workers_gsn = std::max<LogId>(max_all_workers_gsn, wt_to_lw_copy[w_i].last_gsn);
+            min_all_workers_gsn = std::min<LogId>(min_all_workers_gsn, wt_to_lw_copy[w_i].last_gsn);
             min_all_workers_hardened_commit_ts = std::min<TXID>(min_all_workers_hardened_commit_ts, wt_to_lw_copy[w_i].precommitted_tx_commit_ts);
          }
          if (wt_to_lw_copy[w_i].wal_written_offset > worker.logging.wal_gct_cursor) {
@@ -172,7 +172,7 @@ void CRManager::groupCommiter()
       // -------------------------------------------------------------------------------------
       // Phase 2, commit
       u64 committed_tx = 0;
-      for (WORKERID w_i = 0; w_i < workers_count; w_i++) {
+      for (WorkerId w_i = 0; w_i < workers_count; w_i++) {
          Worker& worker = *workers[w_i];
          worker.logging.hardened_commit_ts.store(wt_to_lw_copy[w_i].precommitted_tx_commit_ts, std::memory_order_release);
          TXID signaled_up_to = std::numeric_limits<TXID>::max();

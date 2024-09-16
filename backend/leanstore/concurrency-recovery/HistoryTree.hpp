@@ -24,7 +24,7 @@ namespace cr
 // -------------------------------------------------------------------------------------
 struct __attribute__((packed)) VersionMeta {
    bool called_before = false;
-   DTID dt_id;
+   DataStructureId dt_id;
    u8 payload[];
 };
 // -------------------------------------------------------------------------------------
@@ -45,21 +45,21 @@ class HistoryTree : public HistoryTreeInterface
   public:
    std::unique_ptr<BTreeLL*[]> update_btrees;
    std::unique_ptr<BTreeLL*[]> remove_btrees;
-   virtual void insertVersion(WORKERID worker_id,
+   virtual void insertVersion(WorkerId worker_id,
                               TXID tx_id,
                               COMMANDID command_id,
-                              DTID dt_id,
+                              DataStructureId dt_id,
                               bool is_remove,
                               u64 payload_length,
                               std::function<void(u8*)> cb,
                               bool same_thread);
-   virtual bool retrieveVersion(WORKERID worker_id,
+   virtual bool retrieveVersion(WorkerId worker_id,
                                 TXID tx_id,
                                 COMMANDID command_id,
                                 const bool is_remove,
                                 std::function<void(const u8*, u64 payload_length)> cb);
-   virtual void purgeVersions(WORKERID worker_id, TXID from_tx_id, TXID to_tx_id, RemoveVersionCallback cb, const u64 limit);
-   virtual void visitRemoveVersions(WORKERID worker_id, TXID from_tx_id, TXID to_tx_id,
+   virtual void purgeVersions(WorkerId worker_id, TXID from_tx_id, TXID to_tx_id, RemoveVersionCallback cb, const u64 limit);
+   virtual void visitRemoveVersions(WorkerId worker_id, TXID from_tx_id, TXID to_tx_id,
                                     RemoveVersionCallback cb);  // [from, to]
 };
 // -------------------------------------------------------------------------------------

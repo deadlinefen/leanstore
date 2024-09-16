@@ -93,7 +93,7 @@ CRManager::CRManager(HistoryTreeInterface& versions_space, s32 ssd_fd, u64 end_o
 // -------------------------------------------------------------------------------------
 void CRManager::registerMeAsSpecialWorker()
 {
-   cr::Worker::tls_ptr = new Worker(std::numeric_limits<WORKERID>::max(), workers, workers_count, versions_space, ssd_fd, true);
+   cr::Worker::tls_ptr = new Worker(std::numeric_limits<WorkerId>::max(), workers, workers_count, versions_space, ssd_fd, true);
 }
 // -------------------------------------------------------------------------------------
 void CRManager::scheduleJobSync(u64 t_i, std::function<void()> job)

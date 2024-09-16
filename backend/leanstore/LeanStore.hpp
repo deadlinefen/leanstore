@@ -1,5 +1,4 @@
 #pragma once
-#include "Config.hpp"
 #include "leanstore/concurrency-recovery/HistoryTree.hpp"
 #include "leanstore/profiling/tables/ConfigsTable.hpp"
 #include "leanstore/storage/btree/BTreeLL.hpp"

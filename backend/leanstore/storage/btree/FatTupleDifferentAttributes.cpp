@@ -365,7 +365,7 @@ bool BTreeVI::convertChainedToFatTupleDifferentAttributes(BTreeExclusiveIterator
    dynamic_buffer.resize(maxFatTupleLength());
    auto fat_tuple = new (dynamic_buffer.data()) FatTupleDifferentAttributes(dynamic_buffer.size() - sizeof(FatTupleDifferentAttributes));
    // -------- -----------------------------------------------------------------------------
-   WORKERID next_worker_id;
+   WorkerId next_worker_id;
    TXID next_tx_id;
    COMMANDID next_command_id;
    // -------------------------------------------------------------------------------------
@@ -465,9 +465,9 @@ bool BTreeVI::convertChainedToFatTupleDifferentAttributes(BTreeExclusiveIterator
    }
 }
 // -------------------------------------------------------------------------------------
-void BTreeVI::FatTupleDifferentAttributes::convertToChained(DTID dt_id)
+void BTreeVI::FatTupleDifferentAttributes::convertToChained(DataStructureId dt_id)
 {
-   WORKERID prev_worker_id = worker_id;
+   WorkerId prev_worker_id = worker_id;
    TXID prev_tx_id = tx_ts;
    COMMANDID prev_command_id = command_id;
    for (s64 v_i = deltas_count - 1; v_i >= 0; v_i--) {

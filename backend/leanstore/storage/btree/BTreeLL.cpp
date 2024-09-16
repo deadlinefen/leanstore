@@ -290,11 +290,11 @@ OP_RESULT BTreeLL::append(std::function<void(u8*)> o_key,
       auto session = reinterpret_cast<Session*>(session_ptr.get());
       jumpmuTry()
       {
-         Guard opt_guard(session->bf->header.latch);
+         HybridLatchGuard opt_guard(session->bf->header.latch);
          opt_guard.toOptimisticOrJump();
          {
-            BTreeNode& node = *reinterpret_cast<BTreeNode*>(session->bf->page.dt);
-            if (session->bf->page.dt_id != dt_id || !node.is_leaf || node.upper_fence.length != 0 || node.upper_fence.offset != 0) {
+            BTreeNode& node = *reinterpret_cast<BTreeNode*>(session->bf->page.data);
+            if (session->bf->page.data_structure_id != dt_id || !node.is_leaf || node.upper_fence.length != 0 || node.upper_fence.offset != 0) {
                jumpmu::jump();
             }
          }

@@ -1,26 +1,26 @@
 #pragma once
-#include "BufferFrame.hpp"
-#include "FreeList.hpp"
+#include "BufferFrame.h"
+#include "FreeList.h"
 #include "Units.hpp"
 #include "leanstore/Config.hpp"
-// -------------------------------------------------------------------------------------
-// -------------------------------------------------------------------------------------
+
+
 #include <list>
 #include <mutex>
 #include <unordered_map>
 #include <vector>
-// -------------------------------------------------------------------------------------
+
 namespace leanstore
 {
 namespace storage
 {
-// -------------------------------------------------------------------------------------
+
 class Tracing
 {
   public:
    static std::mutex mutex;
-   static std::unordered_map<PID, std::tuple<DTID, u64>> ht;
-   static void printStatus(PID pid)
+   static std::unordered_map<PageId, std::tuple<DataStructureId, u64>> ht;
+   static void printStatus(PageId pid)
    {
       mutex.lock();
       if (ht.contains(pid)) {
@@ -31,6 +31,6 @@ class Tracing
       mutex.unlock();
    }
 };
-// -------------------------------------------------------------------------------------
+
 }  // namespace storage
 }  // namespace leanstore

@@ -26,7 +26,7 @@ class BMOptimisticGuard
    friend class ExclusivePageGuard;
 
   public:
-   Guard guard;
+   HybridLatchGuard guard;
    // -------------------------------------------------------------------------------------
    BMOptimisticGuard(HybridLatch& lock) : guard(lock) { guard.toOptimisticOrJump(); }
    // -------------------------------------------------------------------------------------
@@ -70,11 +70,11 @@ class BMExclusiveGuard
 class BMExclusiveUpgradeIfNeeded
 {
   private:
-   Guard& guard;
+   HybridLatchGuard& guard;
    const bool was_exclusive;
 
   public:
-   BMExclusiveUpgradeIfNeeded(Guard& guard) : guard(guard), was_exclusive(guard.state == GUARD_STATE::EXCLUSIVE)
+   BMExclusiveUpgradeIfNeeded(HybridLatchGuard& guard) : guard(guard), was_exclusive(guard.state == GUARD_STATE::EXCLUSIVE)
    {
       guard.tryToExclusive();
       jumpmu_registerDestructor();

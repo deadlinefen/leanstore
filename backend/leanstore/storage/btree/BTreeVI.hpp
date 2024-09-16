@@ -28,16 +28,16 @@ class BTreeVI : public BTreeLL
       u8 payload[];
    };
    struct WALInitPage : WALEntry {
-      DTID dt_id;
+      DataStructureId dt_id;
    };
    struct WALAfterImage : WALEntry {
       u16 image_size;
       u8 payload[];
    };
    struct WALLogicalSplit : WALEntry {
-      PID parent_pid = -1;
-      PID left_pid = -1;
-      PID right_pid = -1;
+      PageId parent_pid = -1;
+      PageId left_pid = -1;
+      PageId right_pid = -1;
       s32 right_pos = -1;
    };
    struct WALInsert : WALEntry {
@@ -48,7 +48,7 @@ class BTreeVI : public BTreeLL
    struct WALUpdateSSIP : WALEntry {
       u16 key_length;
       u64 delta_length;
-      WORKERID before_worker_id;
+      WorkerId before_worker_id;
       TXID before_tx_id;
       TXID before_command_id;
       u8 payload[];
@@ -87,7 +87,7 @@ class BTreeVI : public BTreeLL
    struct __attribute__((packed)) Tuple {
       static constexpr COMMANDID INVALID_COMMANDID = std::numeric_limits<COMMANDID>::max();
       TupleFormat tuple_format;
-      WORKERID worker_id;
+      WorkerId worker_id;
       union {
          TXID tx_ts;  // Could be start_ts or tx_id for WT scheme
          TXID start_ts;
@@ -95,7 +95,7 @@ class BTreeVI : public BTreeLL
       COMMANDID command_id;
       u8 write_locked : 1;
       // -------------------------------------------------------------------------------------
-      Tuple(TupleFormat tuple_format, WORKERID worker_id, TXID tx_id)
+      Tuple(TupleFormat tuple_format, WorkerId worker_id, TXID tx_id)
           : tuple_format(tuple_format), worker_id(worker_id), tx_ts(tx_id), command_id(INVALID_COMMANDID)
       {
          write_locked = false;
@@ -113,7 +113,7 @@ class BTreeVI : public BTreeLL
       // -------------------------------------------------------------------------------------
       u8 payload[];  // latest version in-place
                      // -------------------------------------------------------------------------------------
-      ChainedTuple(WORKERID worker_id, TXID tx_id) : Tuple(TupleFormat::CHAINED, worker_id, tx_id), is_removed(false) { reset(); }
+      ChainedTuple(WorkerId worker_id, TXID tx_id) : Tuple(TupleFormat::CHAINED, worker_id, tx_id), is_removed(false) { reset(); }
       bool isFinal() const { return command_id == INVALID_COMMANDID; }
       void reset() {}
    };
@@ -121,7 +121,7 @@ class BTreeVI : public BTreeLL
    // We always append the descriptor, one format to keep simple
    struct __attribute__((packed)) FatTupleDifferentAttributes : Tuple {
       struct __attribute__((packed)) Delta {
-         WORKERID worker_id;
+         WorkerId worker_id;
          TXID tx_ts;
          COMMANDID command_id = INVALID_COMMANDID;  // ATTENTION: TAKE CARE OF THIS, OTHERWISE WE WOULD OVERWRITE ANOTHER UNDO VERSION
          u8 payload[];                              // Descriptor + Diff
@@ -168,7 +168,7 @@ class BTreeVI : public BTreeLL
       inline const Delta& getDeltaConstant(u16 d_i) const { return *reinterpret_cast<const Delta*>(payload + getDeltaOffsetsConstant()[d_i]); }
       std::tuple<OP_RESULT, u16> reconstructTuple(std::function<void(Slice value)> callback) const;
       // -------------------------------------------------------------------------------------
-      void convertToChained(DTID dt_id);
+      void convertToChained(DataStructureId dt_id);
       void resize(u32 new_length);
    };
    static_assert(sizeof(ChainedTuple) <= sizeof(FatTupleDifferentAttributes), "");
@@ -181,10 +181,10 @@ class BTreeVI : public BTreeLL
    struct __attribute__((packed)) Version {
       enum class TYPE : u8 { UPDATE, REMOVE };
       TYPE type;
-      WORKERID worker_id;
+      WorkerId worker_id;
       TXID tx_id;
       COMMANDID command_id;
-      Version(TYPE type, WORKERID worker_id, TXID tx_id, COMMANDID command_id)
+      Version(TYPE type, WorkerId worker_id, TXID tx_id, COMMANDID command_id)
           : type(type), worker_id(worker_id), tx_id(tx_id), command_id(command_id)
       {
       }
@@ -193,7 +193,7 @@ class BTreeVI : public BTreeLL
       u8 is_delta : 1;
       u8 payload[];  // UpdateDescriptor + Diff
       // -------------------------------------------------------------------------------------
-      UpdateVersion(WORKERID worker_id, TXID tx_id, COMMANDID command_id, bool is_delta)
+      UpdateVersion(WorkerId worker_id, TXID tx_id, COMMANDID command_id, bool is_delta)
           : Version(Version::TYPE::UPDATE, worker_id, tx_id, command_id), is_delta(is_delta)
       {
       }
@@ -205,7 +205,7 @@ class BTreeVI : public BTreeLL
       DanglingPointer dangling_pointer;
       bool moved_to_graveway = false;
       u8 payload[];  // Key + Value
-      RemoveVersion(WORKERID worker_id, TXID tx_id, COMMANDID command_id, u16 key_length, u16 value_length)
+      RemoveVersion(WorkerId worker_id, TXID tx_id, COMMANDID command_id, u16 key_length, u16 value_length)
           : Version(Version::TYPE::REMOVE, worker_id, tx_id, command_id), key_length(key_length), value_length(value_length)
       {
       }
@@ -233,7 +233,7 @@ class BTreeVI : public BTreeLL
                                          UpdateSameSizeInPlaceDescriptor&);
 
    // -------------------------------------------------------------------------------------
-   void create(DTID dtid, Config config, BTreeLL* graveyard_btree)
+   void create(DataStructureId dtid, Config config, BTreeLL* graveyard_btree)
    {
       this->graveyard = graveyard_btree;
       BTreeLL::create(dtid, config);
@@ -438,7 +438,7 @@ class BTreeVI : public BTreeLL
       jumpmu_return OP_RESULT::OTHER;
    }
    // -------------------------------------------------------------------------------------
-   inline bool isVisibleForMe(WORKERID worker_id, TXID tx_ts, bool to_write = true)
+   inline bool isVisibleForMe(WorkerId worker_id, TXID tx_ts, bool to_write = true)
    {
       return cr::Worker::my().cc.isVisibleForMe(worker_id, tx_ts, to_write);
    }
@@ -481,7 +481,7 @@ class BTreeVI : public BTreeLL
    static inline u64 maxFatTupleLength() { return EFFECTIVE_PAGE_SIZE - 1000; }
    // -------------------------------------------------------------------------------------
    // HACKS
-   std::set<DTID> fat_tuple_allowed_lists;
+   std::set<DataStructureId> fat_tuple_allowed_lists;
 };  // namespace btree
 // -------------------------------------------------------------------------------------
 }  // namespace btree

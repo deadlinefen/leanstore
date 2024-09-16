@@ -27,11 +27,11 @@ void CRManager::groupCommitCordinator()
       pthread_setname_np(pthread_self(), thread_name.c_str());
       CPUCounters::registerThread(thread_name, false);
       // -------------------------------------------------------------------------------------
-      LID min_all_workers_gsn;  // For Remote Flush Avoidance
-      LID max_all_workers_gsn;  // Sync all workers to this point
+      LogId min_all_workers_gsn;  // For Remote Flush Avoidance
+      LogId max_all_workers_gsn;  // Sync all workers to this point
       TXID min_all_workers_hardened_commit_ts;
       while (keep_running) {
-         min_all_workers_gsn = std::numeric_limits<LID>::max();
+         min_all_workers_gsn = std::numeric_limits<LogId>::max();
          max_all_workers_gsn = 0;
          min_all_workers_hardened_commit_ts = std::numeric_limits<TXID>::max();
          // -------------------------------------------------------------------------------------
@@ -41,10 +41,10 @@ void CRManager::groupCommitCordinator()
          fsync_counter++;
          fsync_counter.notify_all();
          // -------------------------------------------------------------------------------------
-         for (WORKERID w_i = 0; w_i < workers_count; w_i++) {
+         for (WorkerId w_i = 0; w_i < workers_count; w_i++) {
             Worker& worker = *workers[w_i];
-            min_all_workers_gsn = std::min<LID>(min_all_workers_gsn, worker.logging.hardened_gsn);
-            max_all_workers_gsn = std::max<LID>(max_all_workers_gsn, worker.logging.hardened_gsn);
+            min_all_workers_gsn = std::min<LogId>(min_all_workers_gsn, worker.logging.hardened_gsn);
+            max_all_workers_gsn = std::max<LogId>(max_all_workers_gsn, worker.logging.hardened_gsn);
             min_all_workers_hardened_commit_ts = std::min<TXID>(min_all_workers_hardened_commit_ts, worker.logging.hardened_commit_ts);
          }
          // -------------------------------------------------------------------------------------

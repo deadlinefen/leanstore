@@ -118,7 +118,7 @@ OP_RESULT BTreeVI::lookupOptimistic(const u8* key, const u16 key_length, functio
             leaf.recheck();
             PARANOID_BLOCK()
             {
-               const PID pid = leaf.bf->header.pid;
+               const PageId pid = leaf.bf->header.page_id;
                leaf.recheck();
                cout << "not found" << endl;
                leanstore::storage::Tracing::printStatus(pid);
@@ -648,9 +648,9 @@ SpaceCheckResult BTreeVI::checkSpaceUtilization(void* btree_object, BufferFrame&
       return BTreeGeneric::checkSpaceUtilization(static_cast<BTreeGeneric*>(&btree), bf);
    }
    // -------------------------------------------------------------------------------------
-   Guard bf_guard(bf.header.latch);
+   HybridLatchGuard bf_guard(bf.header.latch);
    bf_guard.toOptimisticOrJump();
-   if (bf.page.dt_id != btree.dt_id) {
+   if (bf.page.data_structure_id != btree.dt_id) {
       jumpmu::jump();
    }
    HybridPageGuard<BTreeNode> c_guard(std::move(bf_guard), &bf);
@@ -891,7 +891,7 @@ std::tuple<OP_RESULT, u16> BTreeVI::reconstructChainedTuple([[maybe_unused]] Sli
    materialized_value_length = payload.length() - sizeof(ChainedTuple);
    materialized_value = std::make_unique<u8[]>(materialized_value_length);
    std::memcpy(materialized_value.get(), chain_head.payload, materialized_value_length);
-   WORKERID next_worker_id = chain_head.worker_id;
+   WorkerId next_worker_id = chain_head.worker_id;
    TXID next_tx_id = chain_head.tx_ts;
    COMMANDID next_command_id = chain_head.command_id;
    // -------------------------------------------------------------------------------------

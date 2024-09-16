@@ -17,3 +17,6 @@ debug*
 release*
 clang*
 paper*
+bld
+thirdparty/src
+thirdparty/installed

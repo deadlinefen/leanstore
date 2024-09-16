@@ -29,7 +29,7 @@ void CRManager::groupCommiter2()
       // -------------------------------------------------------------------------------------
       while (keep_running) {
          u64 committed_tx = 0;
-         for (WORKERID w_i = 0; w_i < workers_count; w_i++) {
+         for (WorkerId w_i = 0; w_i < workers_count; w_i++) {
             Worker& worker = *workers[w_i];
             const auto time_now = std::chrono::high_resolution_clock::now();
             std::unique_lock<std::mutex> g(worker.logging.precommitted_queue_mutex);
@@ -70,8 +70,8 @@ void CRManager::groupCommiter2()
    for (u64 t_i = 0; t_i < workers_count; t_i++) {
       writer_threads.emplace_back([&, t_i]() {
          // u64 ssd_offset = end_of_block_device - (t_i * 1024 * 1024 * 1024);
-         const WORKERID workers_range_size = 1;
-         const WORKERID w_i = t_i;
+         const WorkerId workers_range_size = 1;
+         const WorkerId w_i = t_i;
          running_threads++;
          std::string thread_name("log_writer_" + std::to_string(t_i));
          pthread_setname_np(pthread_self(), thread_name.c_str());

@@ -31,12 +31,12 @@ using s32 = int32_t;
 using s64 = int64_t;
 // -------------------------------------------------------------------------------------
 using SIZE = size_t;
-using PID = u64;
-using LID = u64;   // Log ID
+using PageId = uint64_t;
+using LogId = uint64_t;   // Log ID
 using TTS = u64;   // Transaction Time Stamp
-using DTID = s64;  // Datastructure ID
+using DataStructureId = int64_t;  // Datastructure ID
 // -------------------------------------------------------------------------------------
-using WORKERID = u16;
+using WorkerId = uint16_t;
 using TXID = u64;
 using COMMANDID = u32;
 #define TYPE_MSB(TYPE) (1ull << ((sizeof(TYPE) * 8) - 1))

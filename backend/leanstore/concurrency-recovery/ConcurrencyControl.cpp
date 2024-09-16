@@ -25,7 +25,7 @@ void Worker::ConcurrencyControl::refreshGlobalState()
       TXID local_oldest_oltp = std::numeric_limits<u64>::max();
       TXID local_oldest_tx = std::numeric_limits<u64>::max();
 
-      for (WORKERID w_i = 0; w_i < my().workers_count; w_i++) {
+      for (WorkerId w_i = 0; w_i < my().workers_count; w_i++) {
          u64 its_in_flight_tx_id = global_workers_current_snapshot[w_i].load();
          // -------------------------------------------------------------------------------------
          while ((its_in_flight_tx_id & LATCH_BIT) && ((its_in_flight_tx_id & CLEAN_BITS_MASK) < activeTX().startTS())) {
@@ -52,7 +52,7 @@ void Worker::ConcurrencyControl::refreshGlobalState()
       TXID global_all_lwm_buffer = std::numeric_limits<TXID>::max();
       TXID global_oltp_lwm_buffer = std::numeric_limits<TXID>::max();
       bool skipped_a_worker = false;
-      for (WORKERID w_i = 0; w_i < my().workers_count; w_i++) {
+      for (WorkerId w_i = 0; w_i < my().workers_count; w_i++) {
          if (other(w_i).local_latest_lwm_for_tx == other(w_i).local_latest_write_tx) {
             skipped_a_worker = true;
             continue;
@@ -131,7 +131,7 @@ synclwm : {
       // PURGE!
       history_tree.purgeVersions(
           my().worker_id, 0, local_all_lwm - 1,
-          [&](const TXID tx_id, const DTID dt_id, const u8* version_payload, [[maybe_unused]] u64 version_payload_length, const bool called_before) {
+          [&](const TXID tx_id, const DataStructureId dt_id, const u8* version_payload, [[maybe_unused]] u64 version_payload_length, const bool called_before) {
              leanstore::storage::DTRegistry::global_dt_registry.todo(dt_id, version_payload, my().worker_id, tx_id, called_before);
              COUNTERS_BLOCK()
              {
@@ -147,7 +147,7 @@ synclwm : {
          // MOVE deletes to the graveyard
          const u64 from_tx_id = cleaned_untill_oltp_lwm > 0 ? cleaned_untill_oltp_lwm : 0;
          history_tree.visitRemoveVersions(my().worker_id, from_tx_id, local_oltp_lwm - 1,
-                                          [&](const TXID tx_id, const DTID dt_id, const u8* version_payload,
+                                          [&](const TXID tx_id, const DataStructureId dt_id, const u8* version_payload,
                                               [[maybe_unused]] u64 version_payload_length, const bool called_before) {
                                              cleaned_untill_oltp_lwm = std::max(cleaned_untill_oltp_lwm, tx_id + 1);
                                              leanstore::storage::DTRegistry::global_dt_registry.todo(dt_id, version_payload, my().worker_id, tx_id,
@@ -160,20 +160,20 @@ synclwm : {
       }
    }
 }
-Worker::ConcurrencyControl::VISIBILITY Worker::ConcurrencyControl::isVisibleForIt(WORKERID whom_worker_id, TXID commit_ts)
+Worker::ConcurrencyControl::VISIBILITY Worker::ConcurrencyControl::isVisibleForIt(WorkerId whom_worker_id, TXID commit_ts)
 {
    return local_workers_start_ts[whom_worker_id] > commit_ts ? VISIBILITY::VISIBLE_ALREADY : VISIBILITY::VISIBLE_NEXT_ROUND;
 }
 // -------------------------------------------------------------------------------------
 // UNDETERMINED is not possible atm because we spin on start_ts
-Worker::ConcurrencyControl::VISIBILITY Worker::ConcurrencyControl::isVisibleForIt(WORKERID whom_worker_id, WORKERID what_worker_id, TXID tx_ts)
+Worker::ConcurrencyControl::VISIBILITY Worker::ConcurrencyControl::isVisibleForIt(WorkerId whom_worker_id, WorkerId what_worker_id, TXID tx_ts)
 {
    const bool is_commit_ts = tx_ts & MSB;
    const TXID commit_ts = is_commit_ts ? (tx_ts & MSB_MASK) : getCommitTimestamp(what_worker_id, tx_ts);
    return isVisibleForIt(whom_worker_id, commit_ts);
 }
 // -------------------------------------------------------------------------------------
-TXID Worker::ConcurrencyControl::getCommitTimestamp(WORKERID worker_id, TXID tx_ts)
+TXID Worker::ConcurrencyControl::getCommitTimestamp(WorkerId worker_id, TXID tx_ts)
 {
    if (tx_ts & MSB) {
       return tx_ts & MSB_MASK;
@@ -188,7 +188,7 @@ TXID Worker::ConcurrencyControl::getCommitTimestamp(WORKERID worker_id, TXID tx_
 }
 // -------------------------------------------------------------------------------------
 // It is also used to check whether the tuple is write-locked, hence we need the to_write intention flag
-bool Worker::ConcurrencyControl::isVisibleForMe(WORKERID other_worker_id, u64 tx_ts, bool to_write)
+bool Worker::ConcurrencyControl::isVisibleForMe(WorkerId other_worker_id, u64 tx_ts, bool to_write)
 {
    const bool is_commit_ts = tx_ts & MSB;
    const TXID committed_ts = (tx_ts & MSB) ? (tx_ts & MSB_MASK) : 0;
@@ -241,7 +241,7 @@ bool Worker::ConcurrencyControl::isVisibleForMe(WORKERID other_worker_id, u64 tx
    }
 }
 // -------------------------------------------------------------------------------------
-bool Worker::ConcurrencyControl::isVisibleForAll(WORKERID, TXID ts)
+bool Worker::ConcurrencyControl::isVisibleForAll(WorkerId, TXID ts)
 {
    if (ts & MSB) {
       // Commit Timestamp
@@ -297,8 +297,8 @@ void Worker::ConcurrencyControl::CommitTree::cleanIfNecessary()
    }
    utils::Timer timer(CRCounters::myCounters().cc_ms_gc_cm);
    std::set<std::pair<TXID, TXID>> set;  // TODO: unordered_set
-   const WORKERID my_worker_id = cr::Worker::my().worker_id;
-   for (WORKERID w_i = 0; w_i < cr::Worker::my().workers_count; w_i++) {
+   const WorkerId my_worker_id = cr::Worker::my().worker_id;
+   for (WorkerId w_i = 0; w_i < cr::Worker::my().workers_count; w_i++) {
       if (w_i == my_worker_id) {
          continue;
       }

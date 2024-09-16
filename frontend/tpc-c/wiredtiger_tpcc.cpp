@@ -1,4 +1,4 @@
-#include "../shared/WiredTigerAdapter.hpp"
+#include "shared/WiredTigerAdapter.hpp"
 #include "TPCCWorkload.hpp"
 #include "Units.hpp"
 // -------------------------------------------------------------------------------------

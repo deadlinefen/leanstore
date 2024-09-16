@@ -2,7 +2,7 @@
 #include "Exceptions.hpp"
 #include "Units.hpp"
 #include "leanstore/profiling/counters/WorkerCounters.hpp"
-#include "leanstore/storage/buffer-manager/BufferFrame.hpp"
+#include "leanstore/storage/buffer-manager/BufferFrame.h"
 #include "leanstore/storage/buffer-manager/DTRegistry.hpp"
 #include "leanstore/sync-primitives/PageGuard.hpp"
 // -------------------------------------------------------------------------------------

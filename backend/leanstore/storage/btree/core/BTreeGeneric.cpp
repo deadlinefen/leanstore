@@ -13,15 +13,15 @@ using namespace leanstore::storage;
 namespace leanstore::storage::btree
 {
 // -------------------------------------------------------------------------------------
-void BTreeGeneric::create(DTID dtid, Config config)
+void BTreeGeneric::create(DataStructureId dtid, Config config)
 {
    this->dt_id = dtid;
    this->config = config;
    // -------------------------------------------------------------------------------------
    meta_node_bf = &BMC::global_bf->allocatePage();
-   Guard guard(meta_node_bf.asBufferFrame().header.latch, GUARD_STATE::EXCLUSIVE);
+   HybridLatchGuard guard(meta_node_bf.asBufferFrame().header.latch, GUARD_STATE::EXCLUSIVE);
    meta_node_bf.asBufferFrame().header.keep_in_memory = true;
-   meta_node_bf.asBufferFrame().page.dt_id = dtid;
+   meta_node_bf.asBufferFrame().page.data_structure_id = dtid;
    guard.unlock();
    // -------------------------------------------------------------------------------------
    auto root_write_guard_h = HybridPageGuard<BTreeNode>(dtid);
@@ -104,9 +104,9 @@ void BTreeGeneric::trySplit(BufferFrame& to_split, s16 favored_split_pos)
          // -------------------------------------------------------------------------------------
          WALLogicalSplit logical_split_entry;
          logical_split_entry.type = WAL_LOG_TYPE::WALLogicalSplit;
-         logical_split_entry.right_pid = c_x_guard.bf()->header.pid;
-         logical_split_entry.parent_pid = new_root.bf()->header.pid;
-         logical_split_entry.left_pid = new_left_node.bf()->header.pid;
+         logical_split_entry.right_pid = c_x_guard.bf()->header.page_id;
+         logical_split_entry.parent_pid = new_root.bf()->header.page_id;
+         logical_split_entry.left_pid = new_left_node.bf()->header.page_id;
          // -------------------------------------------------------------------------------------
          auto current_right_wal = c_x_guard.reserveWALEntry<WALLogicalSplit>(0);
          *current_right_wal = logical_split_entry;
@@ -170,9 +170,9 @@ void BTreeGeneric::trySplit(BufferFrame& to_split, s16 favored_split_pos)
             // -------------------------------------------------------------------------------------
             WALLogicalSplit logical_split_entry;
             logical_split_entry.type = WAL_LOG_TYPE::WALLogicalSplit;
-            logical_split_entry.right_pid = c_x_guard.bf()->header.pid;
-            logical_split_entry.parent_pid = p_x_guard.bf()->header.pid;
-            logical_split_entry.left_pid = new_left_node.bf()->header.pid;
+            logical_split_entry.right_pid = c_x_guard.bf()->header.page_id;
+            logical_split_entry.parent_pid = p_x_guard.bf()->header.page_id;
+            logical_split_entry.left_pid = new_left_node.bf()->header.page_id;
             // -------------------------------------------------------------------------------------
             auto current_right_wal = c_x_guard.reserveWALEntry<WALLogicalSplit>(0);
             *current_right_wal = logical_split_entry;
@@ -534,29 +534,29 @@ SpaceCheckResult BTreeGeneric::checkSpaceUtilization(void* btree_object, BufferF
 // pre: source buffer frame is shared latched
 void BTreeGeneric::checkpoint(BTreeGeneric&, BufferFrame& bf, u8* dest)
 {
-   std::memcpy(dest, bf.page.dt, EFFECTIVE_PAGE_SIZE);
+   std::memcpy(dest, bf.page.data, EFFECTIVE_PAGE_SIZE);
    auto& dest_node = *reinterpret_cast<BTreeNode*>(dest);
    // root node is handled as inner
    if (dest_node.isInner()) {
       for (u64 t_i = 0; t_i < dest_node.count; t_i++) {
          if (!dest_node.getChild(t_i).isEVICTED()) {
             auto& child_bf = dest_node.getChild(t_i).asBufferFrameMasked();
-            dest_node.getChild(t_i).evict(child_bf.header.pid);
+            dest_node.getChild(t_i).evict(child_bf.header.page_id);
          }
       }
       if (!dest_node.upper.isEVICTED()) {
          auto& child_bf = dest_node.upper.asBufferFrameMasked();
-         dest_node.upper.evict(child_bf.header.pid);
+         dest_node.upper.evict(child_bf.header.page_id);
       }
    }
 }
 // -------------------------------------------------------------------------------------
 std::unordered_map<std::string, std::string> BTreeGeneric::serialize(BTreeGeneric& btree)
 {
-   assert(btree.meta_node_bf.asBufferFrame().page.dt_id == btree.dt_id);
+   assert(btree.meta_node_bf.asBufferFrame().page.data_structure_id == btree.dt_id);
    return {{"dt_id", std::to_string(btree.dt_id)},
            {"height", std::to_string(btree.height.load())},
-           {"meta_pid", std::to_string(btree.meta_node_bf.asBufferFrame().header.pid)}};
+           {"meta_pid", std::to_string(btree.meta_node_bf.asBufferFrame().header.page_id)}};
 }
 // -------------------------------------------------------------------------------------
 void BTreeGeneric::deserialize(BTreeGeneric& btree, std::unordered_map<std::string, std::string> map)
@@ -565,13 +565,13 @@ void BTreeGeneric::deserialize(BTreeGeneric& btree, std::unordered_map<std::stri
    btree.height = std::stol(map["height"]);
    btree.meta_node_bf.evict(std::stol(map["meta_pid"]));
    HybridLatch dummy_latch;
-   Guard dummy_guard(&dummy_latch);
+   HybridLatchGuard dummy_guard(&dummy_latch);
    dummy_guard.toOptimisticSpin();
    u16 failcounter = 0;
    while (true) {
       jumpmuTry()
       {
-         btree.meta_node_bf = &BMC::global_bf->resolveSwip(dummy_guard, btree.meta_node_bf);
+         btree.meta_node_bf = &BMC::global_bf->ResolveSwip(dummy_guard, btree.meta_node_bf);
          jumpmu_break;
       }
       jumpmuCatch()
@@ -584,13 +584,13 @@ void BTreeGeneric::deserialize(BTreeGeneric& btree, std::unordered_map<std::stri
       }
    }
    btree.meta_node_bf.asBufferFrame().header.keep_in_memory = true;
-   assert(btree.meta_node_bf.asBufferFrame().page.dt_id == btree.dt_id);
+   assert(btree.meta_node_bf.asBufferFrame().page.data_structure_id == btree.dt_id);
 }
 // -------------------------------------------------------------------------------------
 void BTreeGeneric::iterateChildrenSwips(void*, BufferFrame& bf, std::function<bool(Swip<BufferFrame>&)> callback)
 {
    // Pre: bf is read locked
-   auto& c_node = *reinterpret_cast<BTreeNode*>(bf.page.dt);
+   auto& c_node = *reinterpret_cast<BTreeNode*>(bf.page.data);
    if (c_node.is_leaf) {
       return;
    }

@@ -25,7 +25,7 @@ void CRManager::groupCommiter1()
    utils::Parallelize::range(FLAGS_wal_log_writers, workers_count, [&](u64 t_i, u64 w_begin_i, u64 w_end_i) {
       writer_threads.emplace_back([&, t_i, w_begin_i, w_end_i]() {
          // u64 ssd_offset = end_of_block_device - (t_i * 1024 * 1024 * 1024);
-         const WORKERID workers_range_size = w_end_i - w_begin_i;
+         const WorkerId workers_range_size = w_end_i - w_begin_i;
          running_threads++;
          std::string thread_name("log_writer_" + std::to_string(t_i));
          pthread_setname_np(pthread_self(), thread_name.c_str());
@@ -148,7 +148,7 @@ void CRManager::groupCommiter1()
             // -------------------------------------------------------------------------------------
             // Phase 2, commit
             u64 committed_tx = 0;
-            for (WORKERID w_i = w_begin_i; w_i < w_end_i; w_i++) {
+            for (WorkerId w_i = w_begin_i; w_i < w_end_i; w_i++) {
                Worker& worker = *workers[w_i];
                worker.logging.hardened_commit_ts.store(wt_to_lw_copy[w_i - w_begin_i].precommitted_tx_commit_ts, std::memory_order_release);
                worker.logging.hardened_gsn.store(wt_to_lw_copy[w_i - w_begin_i].last_gsn, std::memory_order_release);

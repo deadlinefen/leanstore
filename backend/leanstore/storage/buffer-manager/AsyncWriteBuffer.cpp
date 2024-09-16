@@ -41,12 +41,12 @@ bool AsyncWriteBuffer::full()
    }
 }
 // -------------------------------------------------------------------------------------
-void AsyncWriteBuffer::add(BufferFrame& bf, PID pid)
+void AsyncWriteBuffer::add(BufferFrame& bf, PageId pid)
 {
    assert(!full());
    assert(u64(&bf.page) % 512 == 0);
    assert(pending_requests <= batch_max_size);
-   COUNTERS_BLOCK() { WorkerCounters::myCounters().dt_page_writes[bf.page.dt_id]++; }
+   COUNTERS_BLOCK() { WorkerCounters::myCounters().dt_page_writes[bf.page.data_structure_id]++; }
    // -------------------------------------------------------------------------------------
    PARANOID_BLOCK()
    {
@@ -54,7 +54,7 @@ void AsyncWriteBuffer::add(BufferFrame& bf, PID pid)
          Tracing::mutex.lock();
          if (Tracing::ht.contains(pid)) {
             auto& entry = Tracing::ht[pid];
-            ensure(std::get<0>(entry) == bf.page.dt_id);
+            ensure(std::get<0>(entry) == bf.page.data_structure_id);
          }
          Tracing::mutex.unlock();
       }
@@ -96,7 +96,7 @@ u64 AsyncWriteBuffer::pollEventsSync()
    return 0;
 }
 // -------------------------------------------------------------------------------------
-void AsyncWriteBuffer::getWrittenBfs(std::function<void(BufferFrame&, u64, PID)> callback, u64 n_events)
+void AsyncWriteBuffer::getWrittenBfs(std::function<void(BufferFrame&, u64, PageId)> callback, u64 n_events)
 {
    for (u64 i = 0; i < n_events; i++) {
       const auto slot = (u64(events[i].data) - u64(write_buffer.get())) / page_size;

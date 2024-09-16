@@ -34,7 +34,7 @@ struct Transaction {
    STATE state = STATE::IDLE;
    TXID start_ts = 0;  // = TXID
    TXID commit_ts = 0;
-   LID min_observed_gsn_when_started, max_observed_gsn;
+   LogId min_observed_gsn_when_started, max_observed_gsn;
    TX_MODE current_tx_mode = TX_MODE::OLTP;
    TX_ISOLATION_LEVEL current_tx_isolation_level = TX_ISOLATION_LEVEL::SNAPSHOT_ISOLATION;
    bool is_durable = false;

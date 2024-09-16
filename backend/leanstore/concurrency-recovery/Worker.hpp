@@ -23,7 +23,7 @@ namespace leanstore
 namespace cr
 {
 // -------------------------------------------------------------------------------------
-static constexpr u16 STATIC_MAX_WORKERS = std::numeric_limits<WORKERID>::max();
+static constexpr u16 STATIC_MAX_WORKERS = std::numeric_limits<WorkerId>::max();
 // -------------------------------------------------------------------------------------
 // Abbreviations: WT (Worker Thread), GCT (Group Commit Thread or whoever writes the WAL)
 // Stages: pre-committed (SI passed) -> hardened (its own WALs are written and fsync) -> committed/signaled (all dependencies are flushed too and the
@@ -72,15 +72,15 @@ struct Worker {
       // Protect W+GCT shared data (worker <-> group commit thread)
       struct WorkerToLW {
          u64 version = 0;
-         LID last_gsn = 0;
+         LogId last_gsn = 0;
          u64 wal_written_offset = 0;
          TXID precommitted_tx_start_ts = 0;
          TXID precommitted_tx_commit_ts = 0;
       };
       utils::OptimisticSpinStruct<WorkerToLW> wt_to_lw;
       // New: RFA: check for user tx dependency on tuple insert, update, lookup. Deletes are treated as system transaction
-      std::vector<std::tuple<WORKERID, TXID>> rfa_checks_at_precommit;
-      void checkLogDepdency(WORKERID other_worker_id, TXID other_user_tx_id)
+      std::vector<std::tuple<WorkerId, TXID>> rfa_checks_at_precommit;
+      void checkLogDepdency(WorkerId other_worker_id, TXID other_user_tx_id)
       {
          if (FLAGS_recover) return;
          if (!remote_flush_dependency && my().worker_id != other_worker_id) {
@@ -96,9 +96,9 @@ struct Worker {
       // -------------------------------------------------------------------------------------
       atomic<u64> wal_gct_cursor = 0;  // GCT->W
       alignas(512) u8* wal_buffer;     // W->GCT
-      LID wal_lsn_counter = 0;
-      LID wt_gsn_clock;
-      LID rfa_gsn_flushed;
+      LogId wal_lsn_counter = 0;
+      LogId wt_gsn_clock;
+      LogId rfa_gsn_flushed;
       bool remote_flush_dependency = false;
       // -------------------------------------------------------------------------------------
       // -------------------------------------------------------------------------------------
@@ -121,7 +121,7 @@ struct Worker {
       };
       // -------------------------------------------------------------------------------------
       template <typename T>
-      WALEntryHandler<T> reserveDTEntry(u64 requested_size, PID pid, LID gsn, DTID dt_id)
+      WALEntryHandler<T> reserveDTEntry(u64 requested_size, PageId pid, LogId gsn, DataStructureId dt_id)
       {
          const auto lsn = wal_lsn_counter++;
          const u64 total_size = sizeof(WALDTEntry) + requested_size;
@@ -147,7 +147,7 @@ struct Worker {
          current.last_gsn = wt_gsn_clock;
          wt_to_lw.pushSync(current);
       }
-      std::tuple<LID, u64> fetchMaxGSNOffset()
+      std::tuple<LogId, u64> fetchMaxGSNOffset()
       {
          const auto current = wt_to_lw.getSync();
          return {current.last_gsn, current.wal_written_offset};
@@ -165,10 +165,10 @@ struct Worker {
       // Without Payload, by submit no need to update clock (gsn)
       WALMetaEntry& reserveWALMetaEntry();
       void submitWALMetaEntry();
-      inline LID getCurrentGSN() { return wt_gsn_clock; }
-      inline void setCurrentGSN(LID gsn) { wt_gsn_clock = gsn; }
+      inline LogId getCurrentGSN() { return wt_gsn_clock; }
+      inline void setCurrentGSN(LogId gsn) { wt_gsn_clock = gsn; }
       // -------------------------------------------------------------------------------------
-      Logging& other(WORKERID other_worker_id) { return my().all_workers[other_worker_id]->logging; }
+      Logging& other(WorkerId other_worker_id) { return my().all_workers[other_worker_id]->logging; }
    } logging;
    // -------------------------------------------------------------------------------------
    // Concurrency Control
@@ -224,22 +224,22 @@ struct Worker {
       void switchToSnapshotIsolationMode();
       // -------------------------------------------------------------------------------------
       enum class VISIBILITY : u8 { VISIBLE_ALREADY, VISIBLE_NEXT_ROUND, UNDETERMINED };
-      bool isVisibleForAll(WORKERID worker_id, TXID start_ts);
-      bool isVisibleForMe(WORKERID worker_id, u64 tts, bool to_write = true);
-      VISIBILITY isVisibleForIt(WORKERID whom_worker_id, WORKERID what_worker_id, u64 tts);
-      VISIBILITY isVisibleForIt(WORKERID whom_worker_id, TXID commit_ts);
-      TXID getCommitTimestamp(WORKERID worker_id, TXID start_ts);
+      bool isVisibleForAll(WorkerId worker_id, TXID start_ts);
+      bool isVisibleForMe(WorkerId worker_id, u64 tts, bool to_write = true);
+      VISIBILITY isVisibleForIt(WorkerId whom_worker_id, WorkerId what_worker_id, u64 tts);
+      VISIBILITY isVisibleForIt(WorkerId whom_worker_id, TXID commit_ts);
+      TXID getCommitTimestamp(WorkerId worker_id, TXID start_ts);
       // -------------------------------------------------------------------------------------
-      ConcurrencyControl& other(WORKERID other_worker_id) { return my().all_workers[other_worker_id]->cc; }
+      ConcurrencyControl& other(WorkerId other_worker_id) { return my().all_workers[other_worker_id]->cc; }
       // -------------------------------------------------------------------------------------
-      inline u64 insertVersion(DTID dt_id, bool is_remove, u64 payload_length, std::function<void(u8*)> cb)
+      inline u64 insertVersion(DataStructureId dt_id, bool is_remove, u64 payload_length, std::function<void(u8*)> cb)
       {
          utils::Timer timer(CRCounters::myCounters().cc_ms_history_tree_insert);
          const u64 new_command_id = (my().command_id++) | ((is_remove) ? TYPE_MSB(COMMANDID) : 0);
          history_tree.insertVersion(my().worker_id, my().active_tx.startTS(), new_command_id, dt_id, is_remove, payload_length, cb);
          return new_command_id;
       }
-      inline bool retrieveVersion(WORKERID its_worker_id,
+      inline bool retrieveVersion(WorkerId its_worker_id,
                                   TXID its_tx_id,
                                   COMMANDID its_command_id,
                                   std::function<void(const u8*, u64 payload_length)> cb)
@@ -276,7 +276,7 @@ struct Worker {
    void commitTX();
    void abortTX();
    void shutdown();
-   inline WORKERID workerID() { return worker_id; }
+   inline WorkerId workerID() { return worker_id; }
 };
 // -------------------------------------------------------------------------------------
 // Shortcuts
